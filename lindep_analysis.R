@@ -144,4 +144,4 @@ for(d in 1:5) {
 }
 
 # results averaged over the re-sampled data
-apply(results.mat,c(1,2),mean)
+apply(results.mat,c(2,3),mean)

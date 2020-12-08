@@ -731,6 +731,12 @@ for(d in 1:5) {
   }
 }
 
-apply(results.mat,c(1,2),mean)
+apply(results.mat,c(2,3),mean)
 
+conv.mean <- function(x) {cumsum(x)/(1:length(x))}
 
+# is analysis method 5 highly unstable?
+mean(results.array[,5,1])
+plot(conv.mean(results.array[,5,1]))
+plot(conv.mean(results.array[,5,5]))
+# the estimate is unstable, so it is the method that is faulty!
