@@ -1,4 +1,19 @@
 
+################################
+################################
+#### Code written by Maarten J. Bijlsma
+#### Max Planck Institute for Demographic Research
+#### Maarten.Bijlsma@Gmail.com
+#### Last updated: 2020/Dec/14
+#### For the Project: Linear Dependency Issues in
+#### with Fixed Effects in Family and Sibling models
+#### Free to use / share but only with due reference to the Author
+#### If intended to be used in scientific work: please check with the Author
+#### to settle intellectual property rights
+################################
+################################
+
+
 ## A function that generates data. E.g. a DGP (data generating process).
 # parameters:
 # n = number of families
