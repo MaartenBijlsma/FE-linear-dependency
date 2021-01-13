@@ -25,6 +25,41 @@ library(plm)
 ####### generate data and analyze it many times ########
 ####### i.e. do a simulation study              #######
 
+# generate some initial data
+# generate data
+# DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
+DGP.1 <- DGP(n=20000,sibsize=2,sibspacing=2,
+             bcstart=1940,bcend=1980,
+             famaycenter=1955,famaysd=2,effect.fambc=0,
+             famfemean=1,famfesd=1,
+             effect.aar=1,effect.bc=0,
+             effect.sex=1,effect.bc.sex=0,
+             effect.famfe=1,
+             yint=0,ysd=1,
+             seed=1234)
+
+# DGP2: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = 0
+DGP.2 <- DGP(n=20000,sibsize=2,sibspacing=2,
+             bcstart=1940,bcend=1980,
+             famaycenter=1955,famaysd=2,effect.fambc=0.5,
+             famfemean=1,famfesd=1,
+             effect.aar=1,effect.bc=1,
+             effect.sex=1,effect.bc.sex=0,
+             effect.famfe=1,
+             yint=0,ysd=1,
+             seed=1234)
+
+# DGP3: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = nonzero
+DGP.3 <- DGP(n=20000,sibsize=2,sibspacing=2,
+             bcstart=1940,bcend=1980,
+             famaycenter=1955,famaysd=2,effect.fambc=0.5,
+             famfemean=1,famfesd=1,
+             effect.aar=1,effect.bc=1,
+             effect.sex=1,effect.bc.sex=1,
+             effect.famfe=1,
+             yint=0,ysd=1,
+             seed=1234)
+
 # how many simulations?
 it.size <- 999
 
@@ -47,7 +82,7 @@ for(i in 1:it.size) {
   
   ## generate data
   # DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
-  DGP.1 <- DGP(n=20000,sibsize=3,sibspacing=2,
+  DGP.1 <- DGP(n=20000,sibsize=2,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0,
                famfemean=1,famfesd=1,
@@ -58,7 +93,7 @@ for(i in 1:it.size) {
                seed=i*(1234-i))
   
   # DGP2: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = 0
-  DGP.2 <- DGP(n=20000,sibsize=3,sibspacing=2,
+  DGP.2 <- DGP(n=20000,sibsize=2,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
@@ -69,7 +104,7 @@ for(i in 1:it.size) {
                seed=i*(1234-i))
   
   # DGP3: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = nonzero
-  DGP.3 <- DGP(n=20000,sibsize=3,sibspacing=2,
+  DGP.3 <- DGP(n=20000,sibsize=2,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
