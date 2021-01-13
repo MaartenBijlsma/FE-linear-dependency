@@ -28,7 +28,7 @@ library(plm)
 # generate some initial data
 # generate data
 # DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
-DGP.1 <- DGP(n=20000,sibsize=2,sibspacing=2,
+DGP.1 <- DGP(n=30000,sibsize=2,sibspacing=2,
              bcstart=1940,bcend=1980,
              famaycenter=1955,famaysd=2,effect.fambc=0,
              famfemean=1,famfesd=1,
@@ -39,7 +39,7 @@ DGP.1 <- DGP(n=20000,sibsize=2,sibspacing=2,
              seed=1234)
 
 # DGP2: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = 0
-DGP.2 <- DGP(n=20000,sibsize=2,sibspacing=2,
+DGP.2 <- DGP(n=30000,sibsize=2,sibspacing=2,
              bcstart=1940,bcend=1980,
              famaycenter=1955,famaysd=2,effect.fambc=0.5,
              famfemean=1,famfesd=1,
@@ -50,7 +50,7 @@ DGP.2 <- DGP(n=20000,sibsize=2,sibspacing=2,
              seed=1234)
 
 # DGP3: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = nonzero
-DGP.3 <- DGP(n=20000,sibsize=2,sibspacing=2,
+DGP.3 <- DGP(n=30000,sibsize=2,sibspacing=2,
              bcstart=1940,bcend=1980,
              famaycenter=1955,famaysd=2,effect.fambc=0.5,
              famfemean=1,famfesd=1,
@@ -67,6 +67,10 @@ it.size <- 999
 min(DGP.1$bc,DGP.2$bc,DGP.3$bc);max(DGP.1$bc,DGP.2$bc,DGP.3$bc)
 bc.groups <- seq(1940,1986,5) # I choose 5-year categories
 
+# set siblingsize here already
+sibsize <- 2
+clustersizemod <- 1/1:sibsize
+
 # make arrays in which to save the results
 results.array <- rep(NA,3*5*it.size)
 dim(results.array) <- c(3,5,it.size)
@@ -75,14 +79,13 @@ dim(results.a.array) <- c(3,5,it.size)
 results.b.array <- rep(NA,3*5*it.size)
 dim(results.b.array) <- c(3,5,it.size)
 
-clustersizemod <- c(1,1/2,1/3)
 t1 <- Sys.time()
 for(i in 1:it.size) {
   print(i)
   
   ## generate data
   # DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
-  DGP.1 <- DGP(n=20000,sibsize=2,sibspacing=2,
+  DGP.1 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0,
                famfemean=1,famfesd=1,
@@ -93,7 +96,7 @@ for(i in 1:it.size) {
                seed=i*(1234-i))
   
   # DGP2: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = 0
-  DGP.2 <- DGP(n=20000,sibsize=2,sibspacing=2,
+  DGP.2 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
@@ -104,7 +107,7 @@ for(i in 1:it.size) {
                seed=i*(1234-i))
   
   # DGP3: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = nonzero
-  DGP.3 <- DGP(n=20000,sibsize=2,sibspacing=2,
+  DGP.3 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
                famaycenter=1955,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
@@ -124,9 +127,9 @@ for(i in 1:it.size) {
   # sample size reduction is done so that all samples have the same size
   # due to MC error reduction this will have no bearing on the findings
   # but co-authors feel that this is necessary
-  DGP.1 <- cluster.reduce.sample(DGP.1,10000,"famid",1/3) # everyone has 3 siblings
-  DGP.2 <- cluster.reduce.sample(DGP.2,10000,"famid",1/3) # so 10.000 * 3 / 3 = 10.000
-  DGP.3 <- cluster.reduce.sample(DGP.3,10000,"famid",1/3) 
+  DGP.1 <- cluster.reduce.sample(DGP.1,10000,"famid",1/sibsize)
+  DGP.2 <- cluster.reduce.sample(DGP.2,10000,"famid",1/sibsize)
+  DGP.3 <- cluster.reduce.sample(DGP.3,10000,"famid",1/sibsize) 
   
   DGP.1a <- cluster.reduce.sample(DGP.1a,10000,"famid",clustersizemod)
   DGP.2a <- cluster.reduce.sample(DGP.2a,10000,"famid",clustersizemod)
