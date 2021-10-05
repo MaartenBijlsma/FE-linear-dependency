@@ -92,8 +92,9 @@ DGP <- function(n,
   # we should probably discuss that in the paper and then perhaps only have this situation
   # when family members can arrive at different years
   # we should also discuss if we don't want this to be normally distributed, but e.g. a uniform distribution
-  aar <- bc - famay # age at arrival variable
-  aar <- ifelse(aar < 0, 0, aar) # if age at arrival is negative (arrival year is before birth), set it to 0 instead
+  aar <- famay - bc # age at arrival variable
+  gen <- ifelse(aar < 0, 2, 1.5) # if age at arrival is negative, then the child is generation 2, otherwise 1.5
+  aar <- ifelse(aar < 0, 0, aar) # if age at arrival is negative (arrival year is after birth), set it to 0 instead
   # end generate age at arrival
   # start generate family fixed effect
   famfe <- rep(rnorm(n,famfemean,famfesd),each=sibsize)
@@ -104,46 +105,9 @@ DGP <- function(n,
   # start generate outcome Y
   y <- aar*effect.aar + bc*effect.bc + sex*effect.sex + bc*sex*effect.bc.sex + famfe*effect.famfe + rnorm(n,yint,ysd)
   
-  output <- data.frame(cbind(id,famid,birthorder,bc,fambc,famay,aar,famfe,sex,y))
+  output <- data.frame(cbind(id,famid,birthorder,bc,fambc,famay,aar,gen,famfe,sex,y))
   
   return(output)
-}
-
-# longitudinal sampling function, useful for when sampling families with replacement
-# this is very similar to cfdecomp::cluster.resample but return(newdata) has been moved downwards
-long.sample <- function(originaldata, originaldataid, size) {
-  # select a bunch of IDs
-  IDs <- unique(originaldataid)
-  y <- sample(IDs,size,replace=T)
-  z <- table(table(y))
-  
-  # from there, select a group once
-  selectID <- sample(IDs,size=z[1],replace=F)
-  newdata <- originaldata[which(originaldataid %in% selectID),]
-  
-  if(length(z) > 1) {
-    
-    for(i in 2:length(z)) {
-      
-      # select a new group of IDs that was not yet selected
-      IDs2 <- setdiff(IDs,selectID)
-      
-      # from there, randomly select a group of people of the right size
-      selectID2 <- sample(IDs2,size=z[i],replace=F)
-      selectID <- c(selectID,selectID2) # so we don't re-select the newly
-      # selected people either
-      
-      for(j in 1:i) {
-        
-        # copy the new dataset i number of times
-        newdata <- rbind(newdata,originaldata[which(originaldataid %in% selectID2),])
-        
-      }
-      
-    }
-    
-  }
-  return(newdata)
 }
 
 ## a function to sample from a pre-generated pool of data
@@ -151,7 +115,7 @@ long.sample <- function(originaldata, originaldataid, size) {
 # n is the number of families you want in the analysis
 # perc.discon is the percentage of families that are discordant on birth cohort but concordant on aar
 # ! note, this function  only works for DGPs with sibsize of 2
-# ! note, this function requires the long.sample function to be loaded
+# ! note, this function requires the cluster.resample function from cfdecomp to be loaded
 
 disconfilter <- function(DGP.pool,n,perc.discon) {
   # calculate differences between sibling birth cohorts
@@ -175,8 +139,8 @@ disconfilter <- function(DGP.pool,n,perc.discon) {
   # now we can select families based on their discordant/concordant status
   n.discon <- n*perc.discon
   n.disdis <- n*(1-perc.discon)
-  DGP.discon <- long.sample(DGP.pool[DGP.pool$famaardiff==0,],DGP.pool$famid[DGP.pool$famaardiff==0],size=n.discon)
-  DGP.disdis <- long.sample(DGP.pool[DGP.pool$famaardiff!=0,],DGP.pool$famid[DGP.pool$famaardiff!=0],size=n.disdis)
+  DGP.discon <- cluster.resample(DGP.pool[DGP.pool$famaardiff==0,],"famid",size=n.discon)
+  DGP.disdis <- cluster.resample(DGP.pool[DGP.pool$famaardiff!=0,],"famid",size=n.disdis)
   DGP.new <- rbind(DGP.discon,DGP.disdis)
   return(DGP.new)
 }
@@ -216,9 +180,6 @@ cluster.reduce.sample <- function(DGP,n.reduced,clustername,clustersizemod) {
     # sample with appropriate size (and without replacement):
     reduced.cluster.id <- sample(cluster.id,size=round(cluster.sizes[names(proptabletablecluster)==k]*clustersizemod[i]))
     DGPcluster <- DGP[which(DGP[,clustername] %in% reduced.cluster.id),]
-    
-    # we don't need to sample with replacement, but I'll keep the code below:
-    # long.sample(DGPcluster,DGPcluster[,clustername],size=cluster.sizes[names(proptabletablecluster)==k])
     
     DGP.new <- rbind(DGP.new,DGPcluster)
   }
@@ -469,4 +430,28 @@ analyse.DGP.2 <- function(DGP.2,
   results[5] <- plm(y ~ aar + as.factor(bc.grouped) + sex, effect='individual',model='within',index='famid',family='gaussian',data=DGP.2)$coef[1]
   
   return(results)
+}
+
+# a function that identifies how multi-generational families are
+# ! note, needs to be updated if you generate more than 2
+# children per family
+gensplit <- function(data) {
+  
+  # identify families that have both children observed or not
+  data$genlen <- unlist(lapply(tapply(data$gen,data$famid,length),function(x) if(x > 0) rep(x,x)))
+  # filter out those families that have only 1 child observed
+  data.G <- subset(data, genlen>1)
+  # identify only those families that have both G1.5 and G2
+  data.G$gensum <- tapply(data.G$gen,data.G$famid,sum)
+  # families with a gensum of
+  # 3 = twice 1.5 gen
+  # 4 = twice 2 gen
+  # 3.5 = mixed
+  # 1.5 or 2: one family member already filtered out - these are also filtered
+  # now -select- families with gensum 3.5, which are mixed families:
+  data.Gmix <- subset(data.G, gensum==3.5)
+  # and -select- the homogenous families
+  data.Ghom <- subset(data.G, gensum!=3.5)
+  
+  return(list(data.Gmix,data.Ghom))
 }

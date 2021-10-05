@@ -22,6 +22,9 @@ source('lindep_functions.R')
 # load library for analysis with fixed effect intercepts
 library(plm)
 
+# load library for clustered resampling
+library(cfdecomp)
+
 ####### generate data and analyze it many times ########
 ####### i.e. do a simulation study              #######
 
@@ -30,7 +33,7 @@ library(plm)
 # DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
 DGP.1 <- DGP(n=30000,sibsize=2,sibspacing=2,
              bcstart=1940,bcend=1980,
-             famaycenter=1955,famaysd=2,effect.fambc=0,
+             famaycenter=1960,famaysd=2,effect.fambc=0,
              famfemean=1,famfesd=1,
              effect.aar=1,effect.bc=0,
              effect.sex=1,effect.bc.sex=0,
@@ -79,6 +82,11 @@ dim(results.a.array) <- c(3,5,it.size)
 results.b.array <- rep(NA,3*5*it.size)
 dim(results.b.array) <- c(3,5,it.size)
 
+results.a.Ghom.array <- rep(NA,3*5*it.size)
+dim(results.a.Ghom.array) <- c(3,5,it.size)
+results.a.Gmix.array <- rep(NA,3*5*it.size)
+dim(results.a.Gmix.array) <- c(3,5,it.size)
+
 t1 <- Sys.time()
 for(i in 1:it.size) {
   print(i)
@@ -87,7 +95,7 @@ for(i in 1:it.size) {
   # DGP1: effect.fambc = 0; effect.bc = 0; effect.bc.sex = 0
   DGP.1 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
-               famaycenter=1955,famaysd=2,effect.fambc=0,
+               famaycenter=1960,famaysd=2,effect.fambc=0,
                famfemean=1,famfesd=1,
                effect.aar=1,effect.bc=0,
                effect.sex=1,effect.bc.sex=0,
@@ -98,7 +106,7 @@ for(i in 1:it.size) {
   # DGP2: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = 0
   DGP.2 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
-               famaycenter=1955,famaysd=2,effect.fambc=0.5,
+               famaycenter=1960,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
                effect.aar=1,effect.bc=1,
                effect.sex=1,effect.bc.sex=0,
@@ -109,7 +117,7 @@ for(i in 1:it.size) {
   # DGP3: effect.fambc = nonzero; effect.bc = nonzero; effect.bc.sex = nonzero
   DGP.3 <- DGP(n=30000,sibsize=sibsize,sibspacing=2,
                bcstart=1940,bcend=1980,
-               famaycenter=1955,famaysd=2,effect.fambc=0.5,
+               famaycenter=1960,famaysd=2,effect.fambc=0.5,
                famfemean=1,famfesd=1,
                effect.aar=1,effect.bc=1,
                effect.sex=1,effect.bc.sex=1,
@@ -123,6 +131,11 @@ for(i in 1:it.size) {
   DGP.2b <- subset(DGP.2, aar<= 18 & aar>0) # removes those with a zero (those concordant on the exposure)
   DGP.3a <- subset(DGP.3, aar<= 18) # removes all those with an age at arrival greater than 18
   DGP.3b <- subset(DGP.3, aar<= 18 & aar>0) # removes those with a zero (those concordant on the exposure)
+  
+  # further subsample DGP.1a, to determine which family type drives identification
+  X <- gensplit(DGP.1a); DGP.1a.Gmix <- X[[1]]; DGP.1a.Ghom <- X[[2]]; rm(X)
+  X <- gensplit(DGP.2a); DGP.2a.Gmix <- X[[1]]; DGP.2a.Ghom <- X[[2]]; rm(X)
+  X <- gensplit(DGP.3a); DGP.3a.Gmix <- X[[1]]; DGP.3a.Ghom <- X[[2]]; rm(X)
   
   # sample size reduction is done so that all samples have the same size
   # due to MC error reduction this will have no bearing on the findings
@@ -139,11 +152,18 @@ for(i in 1:it.size) {
   DGP.2b <- cluster.reduce.sample(DGP.2b,10000,"famid",clustersizemod)
   DGP.3b <- cluster.reduce.sample(DGP.3b,10000,"famid",clustersizemod)
   
+  # also for the hom group in a.G (the mix group is too small to start with)
+  DGP.1a.Ghom <- cluster.reduce.sample(DGP.1a.Ghom,10000,"famid",clustersizemod)
+  DGP.2a.Ghom <- cluster.reduce.sample(DGP.2a.Ghom,10000,"famid",clustersizemod)
+  DGP.3a.Ghom <- cluster.reduce.sample(DGP.3a.Ghom,10000,"famid",clustersizemod)
+  
   # analyse the DGPs and save results in an array
   results.array[,,i] <-   analyse.DGP(DGP.1 ,DGP.2 ,DGP.3 ,bc.groups)[[1]]
   results.a.array[,,i] <- analyse.DGP(DGP.1a,DGP.2a,DGP.3a,bc.groups)[[1]]
   results.b.array[,,i] <- analyse.DGP(DGP.1b,DGP.2b,DGP.3b,bc.groups)[[1]]
   
+  results.a.Ghom.array[,,i] <- analyse.DGP(DGP.1a.Ghom,DGP.2a.Ghom,DGP.3a.Ghom,bc.groups)[[1]]
+  results.a.Gmix.array[,,i] <- analyse.DGP(DGP.1a.Gmix,DGP.2a.Gmix,DGP.3a.Gmix,bc.groups)[[1]]
 }
 t2 <- Sys.time()
 t2 - t1
@@ -152,6 +172,9 @@ t2 - t1
 DGP123 <- apply(results.array,c(1,2),mean)
 DGP123a <- apply(results.a.array,c(1,2),mean)
 DGP123b <- apply(results.b.array,c(1,2),mean)
+
+DGP123a.Ghom <- apply(results.a.Ghom.array,c(1,2),mean)
+DGP123a.Gmix <- apply(results.a.Gmix.array,c(1,2),mean)
 
 # test the effect of different ratios of discordant on bc but concordant on aar
 # generate a very large pool of data
@@ -196,4 +219,6 @@ for(d in 1:5) {
 }
 
 # results averaged over the re-sampled data
-apply(results.mat,c(2,3),mean)
+apply(results.array,c(2,3),mean)
+
+
